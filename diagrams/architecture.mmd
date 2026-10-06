@@ -1,0 +1,24 @@
+flowchart LR
+    subgraph Sources
+        ORD["Orders CSV<br/>daily file drop"]
+        MKT["Marketing lists<br/>periodic file drops"]
+        CRM[("CRM database<br/>RDS PostgreSQL")]
+    end
+
+    CRM -- "CDC (logical replication)" --> DMS["AWS DMS<br/>full load + CDC"]
+    DMS -- "Parquet change files<br/>Op = I / U / D" --> RAW
+    ORD --> RAW
+    MKT --> RAW
+
+    subgraph Lake["S3 + Glue Data Catalog"]
+        RAW[("raw bucket<br/>orders/ marketing/ crm/")]
+        EXT["Glue external tables<br/>orders_raw, marketing_raw,<br/>crm_customers_raw"]
+        RAW --- EXT
+    end
+
+    EXT --> DBT["dbt on Athena<br/>staging models"]
+    DBT --> MARTS[("lakehouse bucket<br/>Apache Iceberg tables")]
+    MARTS --> OUT["dim_customer (reconciled)<br/>fct_orders (incremental merge)<br/>audit_address_conflicts"]
+
+    GH["GitHub Actions<br/>OIDC, no stored keys"] -. "terraform plan / apply" .-> Lake
+    GH -. "pytest, dbt parse, dbt build" .-> DBT

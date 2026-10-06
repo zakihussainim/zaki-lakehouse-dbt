@@ -1,0 +1,15 @@
+# No account details live here: bucket names come from environment variables
+# (scripts/set-env.ps1 locally, the app-ci workflow in GitHub Actions).
+lakehouse:
+  target: default
+  outputs:
+    default:
+      type: athena
+      region_name: eu-west-2
+      database: awsdatacatalog
+      schema: "lakehouse_{{ env_var('DBT_ENV', 'dev') }}"
+      work_group: "zaki-lakehouse-dbt-{{ env_var('DBT_ENV', 'dev') }}"
+      s3_staging_dir: "s3://{{ env_var('ATHENA_RESULTS_BUCKET') }}/dbt-staging/"
+      s3_data_dir: "s3://{{ env_var('LAKEHOUSE_BUCKET') }}/dbt/"
+      threads: 4
+      num_retries: 2

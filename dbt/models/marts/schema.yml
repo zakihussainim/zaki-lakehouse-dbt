@@ -1,0 +1,51 @@
+version: 2
+
+models:
+  - name: dim_customer
+    description: >
+      One row per customer, reconciled from CRM and marketing using field-level ownership.
+      CRM owns name, email, phone and segment. Marketing owns marketing_opt_in and
+      preferred_channel. postal_address comes from the source with the newest updated_at.
+    columns:
+      - name: customer_id
+        description: Business key shared by CRM, marketing and orders.
+        tests:
+          - unique
+          - not_null
+      - name: segment
+        tests:
+          - accepted_values:
+              values: ["Consumer", "SMB", "Enterprise"]
+              config:
+                where: "segment is not null"
+      - name: address_source
+        tests:
+          - accepted_values:
+              values: ["crm", "marketing"]
+      - name: is_active
+        tests:
+          - not_null
+
+  - name: fct_orders
+    description: One row per order, merged incrementally from the daily CSV drops.
+    columns:
+      - name: order_id
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: Orders for customers that are not in dim_customer are expected (warn only).
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customer')
+              field: customer_id
+              config:
+                severity: warn
+      - name: status
+        tests:
+          - accepted_values:
+              values: ["placed", "shipped", "delivered", "cancelled"]
+
+  - name: audit_address_conflicts
+    description: Customers whose CRM and marketing postal addresses disagree, and which source won.

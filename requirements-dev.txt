@@ -1,0 +1,5 @@
+-r requirements.txt
+pytest>=8.0
+pyyaml>=6.0
+# dbt adapter for Athena. If this package name is retired, install the current "dbt-athena" package instead.
+dbt-athena-community>=1.9,<2

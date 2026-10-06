@@ -6,7 +6,8 @@ on:
       - "terraform/**"
       - ".github/workflows/terraform.yml"
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - "terraform/**"
       - ".github/workflows/terraform.yml"
@@ -17,7 +18,9 @@ permissions:
 
 env:
   AWS_REGION: eu-west-2
- 
+  TF_IN_AUTOMATION: "true"
+  # Your public IP (x.x.x.x/32), only needed when the RDS + DMS stack is enabled.
+  TF_VAR_admin_cidr: ${{ vars.ADMIN_CIDR }}
 
 jobs:
   lint:
@@ -26,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
-      - name: Terraform fmt
+      - name: Check formatting
         run: terraform fmt -check -recursive
         working-directory: terraform
       - name: Validate dev
@@ -43,9 +46,6 @@ jobs:
   plan-dev:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: terraform/envs/dev
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -53,15 +53,16 @@ jobs:
           role-to-assume: ${{ vars.DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - uses: hashicorp/setup-terraform@v3
-      - run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
-      - run: terraform plan
+      - name: Terraform init
+        run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+        working-directory: terraform/envs/dev
+      - name: Terraform plan
+        run: terraform plan -input=false -no-color
+        working-directory: terraform/envs/dev
 
   plan-prod:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: terraform/envs/prod
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -69,15 +70,19 @@ jobs:
           role-to-assume: ${{ vars.DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - uses: hashicorp/setup-terraform@v3
-      - run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
-      - run: terraform plan
+      - name: Terraform init
+        run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+        working-directory: terraform/envs/prod
+      - name: Terraform plan
+        run: terraform plan -input=false -no-color
+        working-directory: terraform/envs/prod
 
   apply-dev:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: terraform/envs/dev
+    concurrency:
+      group: terraform-apply
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -85,17 +90,21 @@ jobs:
           role-to-assume: ${{ vars.DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - uses: hashicorp/setup-terraform@v3
-      - run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
-      - run: terraform apply -auto-approve
+      - name: Terraform init
+        run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+        working-directory: terraform/envs/dev
+      - name: Terraform apply
+        run: terraform apply -auto-approve -input=false -no-color
+        working-directory: terraform/envs/dev
 
   apply-prod:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push'
     needs: apply-dev
     runs-on: ubuntu-latest
     environment: production
-    defaults:
-      run:
-        working-directory: terraform/envs/prod
+    concurrency:
+      group: terraform-apply-prod
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -103,6 +112,9 @@ jobs:
           role-to-assume: ${{ vars.DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - uses: hashicorp/setup-terraform@v3
-      - run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
-      - run: terraform apply -auto-approve
-      
+      - name: Terraform init
+        run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+        working-directory: terraform/envs/prod
+      - name: Terraform apply
+        run: terraform apply -auto-approve -input=false -no-color
+        working-directory: terraform/envs/prod
