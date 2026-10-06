@@ -42,13 +42,18 @@ resource "aws_s3_bucket_public_access_block" "tf_state" {
 
 data "aws_caller_identity" "current" {}
 
+resource "aws_iam_openid_connect_provider" "github" {
+  url            = "https://token.actions.githubusercontent.com"
+  client_id_list = ["sts.amazonaws.com"]
+}
+
 
 data "aws_iam_policy_document" "github_actions_assume_role" {
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
     principals {
       type        = "Federated"
-      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"]
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
     }
     condition {
       test     = "StringLike"
