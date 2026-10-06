@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Raw landing data. External tables over files in the raw S3 bucket (created by Terraform).
+    database: awsdatacatalog
+    schema: "lakehouse_raw_{{ env_var('DBT_ENV', 'dev') }}"
+    tables:
+      - name: orders_raw
+        description: Daily orders CSV drops (orders/orders_YYYY-MM-DD.csv). All columns are strings.
+      - name: marketing_raw
+        description: Marketing list snapshots (marketing/marketing_drop_NNN.csv). All columns are strings.
+      - name: crm_customers_raw
+        description: >
+          CRM customer change events written by AWS DMS as Parquet. op is I, U or D;
+          cdc_ts is the DMS change timestamp. Empty until the RDS + DMS stack is running.

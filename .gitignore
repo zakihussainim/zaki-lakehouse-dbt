@@ -4,6 +4,10 @@
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+crash.log
+
+# Local backend config (contains the AWS account ID)
+backend.hcl
 
 # dbt
 dbt/target/
@@ -15,7 +19,8 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+.pytest_cache/
 
-# Secrets / local env
+# Local generated data and environment files
+out/
 .env
-backend.hcl
