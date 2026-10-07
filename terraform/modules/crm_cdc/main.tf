@@ -199,7 +199,7 @@ resource "aws_dms_replication_subnet_group" "this" {
 
 resource "aws_dms_replication_instance" "this" {
   replication_instance_id     = "${local.prefix}-dms"
-  replication_instance_class  = "dms.t3.micro"
+  replication_instance_class  = "dms.t3.small"
   allocated_storage           = 20
   multi_az                    = false
   publicly_accessible         = true
