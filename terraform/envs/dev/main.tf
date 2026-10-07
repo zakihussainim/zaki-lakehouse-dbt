@@ -3,7 +3,7 @@ locals {
 
   # Flip to true to build the RDS + DMS change-data-capture stack.
   # It costs money while it exists. Flip back to false and merge to tear it down.
-  enable_crm_cdc = true
+  enable_crm_cdc = false
 }
 
 module "storage" {

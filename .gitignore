@@ -24,3 +24,5 @@ venv/
 # Local generated data and environment files
 out/
 .env
+
+dbt/.user.yml
